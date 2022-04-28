@@ -253,14 +253,13 @@ func createSAMLResponse(client *OIDCClient, samlAssertion string) (string, error
 }
 
 func doLogin(client *OIDCClient) (*TokenResponse, error) {
-	listener, err := net.Listen("tcp", "127.0.0.1:")
+	listener, err := net.Listen("tcp", "127.0.0.1:8118")
 	if err != nil {
 		return nil, errors.Wrap(err, "Cannot start local http server to handle login redirect")
 	}
-	port := listener.Addr().(*net.TCPAddr).Port
 
 	clientId := client.config.GetString(CLIENT_ID)
-	redirect := fmt.Sprintf("http://127.0.0.1:%d", port)
+	redirect := "http://localhost:8118"
 	v, err := pkce.CreateCodeVerifierWithLength(pkce.MaxLength)
 	if err != nil {
 		return nil, errors.Wrap(err, "Cannot generate OAuth2 PKCE code_challenge")
