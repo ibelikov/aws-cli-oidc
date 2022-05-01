@@ -3,7 +3,6 @@ package lib
 import (
 	"bytes"
 	"crypto/tls"
-	"crypto/x509"
 	"encoding/json"
 	"io"
 	"io/ioutil"
@@ -15,8 +14,6 @@ import (
 // Wrapper around net/url and net/http.  Fluent style modeled from Java's JAX-RS
 
 type OAuthError struct {
-	err         string `json:"error"`
-	description string `json:"error_description"`
 }
 
 type RestClient struct {
@@ -47,33 +44,7 @@ type Response struct {
 }
 
 func NewRestClient(config *RestClientConfig) (*RestClient, error) {
-	tlsConfig := &tls.Config{
-		InsecureSkipVerify: config.InsecureSkipVerify,
-	}
-
-	// Setup for client auth
-	if config.ClientCert != "" && config.ClientKey != "" {
-		// Load client cert
-		cert, err := tls.LoadX509KeyPair(config.ClientCert, config.ClientKey)
-		if err != nil {
-			return nil, err
-		}
-
-		// Load CA cert
-		caCert, err := ioutil.ReadFile(config.ClientCA)
-		if err != nil {
-			return nil, err
-		}
-		caCertPool, err := x509.SystemCertPool()
-		if err != nil {
-			caCertPool = x509.NewCertPool()
-		}
-		caCertPool.AppendCertsFromPEM(caCert)
-
-		tlsConfig.Certificates = []tls.Certificate{cert}
-		tlsConfig.RootCAs = caCertPool
-		tlsConfig.BuildNameToCertificate()
-	}
+	tlsConfig := &tls.Config{}
 
 	tr := &http.Transport{
 		Proxy:           http.ProxyFromEnvironment,

@@ -3,7 +3,6 @@ package lib
 import (
 	"net/url"
 	"os"
-	"strconv"
 
 	"github.com/pkg/errors"
 
@@ -11,9 +10,7 @@ import (
 	"github.com/spf13/viper"
 )
 
-type RESTClient struct {
-	client *RestClient
-}
+type RESTClient struct{}
 
 type OIDCMetadataResponse struct {
 	Issuer                                     string   `json:"issuer"`
@@ -79,17 +76,8 @@ func InitializeClient(ui *input.UI, name string) (*OIDCClient, error) {
 		RunSetup(ui)
 	}
 	providerURL := config.GetString(OIDC_PROVIDER_METADATA_URL)
-	insecure, err := strconv.ParseBool(config.GetString(INSECURE_SKIP_VERIFY))
-	if err != nil {
-		return nil, errors.Wrap(err, "Failed to parse insecure_skip_verify option in the config")
-	}
 
-	restClient, err := NewRestClient(&RestClientConfig{
-		ClientCert:         config.GetString(CLIENT_AUTH_CERT),
-		ClientKey:          config.GetString(CLIENT_AUTH_KEY),
-		ClientCA:           config.GetString(CLIENT_AUTH_CA),
-		InsecureSkipVerify: insecure,
-	})
+	restClient, err := NewRestClient(&RestClientConfig{})
 	if err != nil {
 		return nil, errors.Wrap(err, "Failed to initialize HTTP client for the OIDC provider")
 	}
@@ -143,20 +131,4 @@ func (c *OIDCClient) Authorization() *WebTarget {
 
 func (c *OIDCClient) Token() *WebTarget {
 	return c.restClient.Target(c.metadata.TokenEndpoint)
-}
-
-func (c *OIDCClient) RedirectToSuccessfulPage() *WebTarget {
-	url := c.config.GetString(SUCCESSFUL_REDIRECT_URL)
-	if url == "" {
-		return nil
-	}
-	return c.restClient.Target(url)
-}
-
-func (c *OIDCClient) RedirectToFailurePage() *WebTarget {
-	url := c.config.GetString(FAILURE_REDIRECT_URL)
-	if url == "" {
-		return nil
-	}
-	return c.restClient.Target(url)
 }
