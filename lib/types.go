@@ -11,6 +11,16 @@ type AWSCredentials struct {
 	Expires         time.Time `json:"Expiration"`
 }
 
+type SessionCredentials struct {
+	SessionId    string `json:"sessionId"`
+	SessionKey   string `json:"sessionKey"`
+	SessionToken string `json:"sessionToken"`
+}
+
+type SigningToken struct {
+	SigningToken string `json:"SigninToken"`
+}
+
 type TokenResponse struct {
 	AccessToken      string `json:"access_token"`
 	IDToken          string `json:"id_token"`

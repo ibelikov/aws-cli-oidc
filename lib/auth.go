@@ -4,8 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net"
 	"net/http"
+	"net/url"
 	"strconv"
 	"time"
 
@@ -18,7 +20,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-func Authenticate(client *OIDCClient, roleArn string, maxSessionDurationSeconds int64, useSecret, asJson bool) {
+func Authenticate(client *OIDCClient, roleArn string, maxSessionDurationSeconds int64, useSecret, asJson bool, webConsole bool) {
 	// Resolve target IAM Role ARN
 	defaultIAMRoleArn := client.config.GetString(DEFAULT_IAM_ROLE_ARN)
 	if roleArn == "" {
@@ -64,8 +66,34 @@ func Authenticate(client *OIDCClient, roleArn string, maxSessionDurationSeconds 
 			Write("The AWS credentials has been saved in OS secret store")
 		}
 	}
+	if webConsole {
+		sessionCredentials := getSessionCreds(awsCreds)
 
-	if asJson {
+		jsonBytes, _ := json.Marshal(sessionCredentials)
+		session := url.QueryEscape(string(jsonBytes))
+
+		requestUrl := fmt.Sprintf("https://signin.aws.amazon.com/federation?Action=getSigninToken&SessionDuration=%d&Session=%s", maxSessionDurationSeconds, session)
+
+		resp, err := http.Get(requestUrl)
+		if err != nil {
+			Writeln("Unexpected AWS federation endpoint response")
+			Exit(err)
+		}
+		defer resp.Body.Close()
+		body, _ := io.ReadAll(resp.Body)
+
+		signingToken := SigningToken{}
+		err = json.Unmarshal(body, &signingToken)
+		if err != nil {
+			Writeln("Can't parse SigningToken from federation ednpoint response")
+			Exit(err)
+		}
+
+		signinUrl := fmt.Sprintf("https://signin.aws.amazon.com/federation?Action=login&Issuer=example&Destination=%s&SigninToken=%s",
+			url.QueryEscape("https://eu-west-1.console.aws.amazon.com/"), signingToken.SigningToken)
+
+		browser.OpenURL(signinUrl)
+	} else if asJson {
 		awsCreds.Version = 1
 
 		jsonBytes, err := json.Marshal(awsCreds)
@@ -230,4 +258,12 @@ func codeToToken(client *OIDCClient, verifier string, code string, redirect stri
 	var tokenResponse TokenResponse
 	res.ReadJson(&tokenResponse)
 	return &tokenResponse, nil
+}
+
+func getSessionCreds(cred *AWSCredentials) *SessionCredentials {
+	return &SessionCredentials{
+		SessionId:    cred.AWSAccessKey,
+		SessionKey:   cred.AWSSecretKey,
+		SessionToken: cred.AWSSessionToken,
+	}
 }
