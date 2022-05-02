@@ -195,6 +195,9 @@ func launch(client *OIDCClient, url string, listener net.Listener) string {
 		res.Header().Set("Pragma", "no-cache")
 		res.WriteHeader(200)
 		res.Write([]byte(fmt.Sprintf(`<!DOCTYPE html>
+<script>
+window.close()
+</script>
 <body>
 %s
 </body>
